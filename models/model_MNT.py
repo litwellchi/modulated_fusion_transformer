@@ -261,14 +261,29 @@ class Model_MNT(nn.Module):
         self.proj = nn.Linear(args.hidden_size, args.ans_size)
         self.proj_drop = nn.Dropout(args.dropout_o)
 
-    def forward(self, x, y, _):
-        x_mask = make_mask(x.unsqueeze(2))
-        y_mask = make_mask(y)
+    def forward(self, x, y, _, flag):
+        if flag == 0:
+            x_mask = make_mask(x.unsqueeze(2))
+            y_mask = make_mask(y.unsqueeze(2))
 
-        embedding = self.embedding(x)
+            embedding = self.embedding(x)
 
-        x, _ = self.lstm_x(self.input_drop(embedding))
-        y, _ = self.lstm_y(self.input_drop(y))
+            x, _ = self.lstm_x(self.input_drop(embedding))
+            y, _ = self.lstm_x(self.input_drop(embedding))
+        elif flag == 1:
+            x_mask = make_mask(x)
+            y_mask = make_mask(y)
+
+            x, _ = self.lstm_y(self.input_drop(y))
+            y, _ = self.lstm_y(self.input_drop(y))
+        else:
+            x_mask = make_mask(x.unsqueeze(2))
+            y_mask = make_mask(y)
+
+            embedding = self.embedding(x)
+
+            x, _ = self.lstm_x(self.input_drop(embedding))
+            y, _ = self.lstm_y(self.input_drop(y))
 
         # Backbone Framework
         for enc in self.enc_list:

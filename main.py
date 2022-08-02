@@ -32,7 +32,7 @@ def parse_args():
     parser.add_argument('--output', type=str, default='ckpt/')
     parser.add_argument('--name', type=str, default='exp0/')
     parser.add_argument('--batch_size', type=int, default=64)
-    parser.add_argument('--max_epoch', type=int, default=99)
+    parser.add_argument('--max_epoch', type=int, default=40)
     parser.add_argument('--lr_base', type=float, default=0.00005)
     parser.add_argument('--lr_decay', type=float, default=0.2)
     parser.add_argument('--lr_decay_times', type=int, default=2)
@@ -48,6 +48,20 @@ def parse_args():
 
     args = parser.parse_args()
     return args
+
+def iid_sampling(dataset, num_users):
+    """
+    Sample I.I.D. client data from MNIST dataset
+    :param dataset:
+    :param num_users:
+    :return: dict of image index
+    """
+    num_items = int(len(dataset)/num_users)
+    dict_users, all_idxs = {}, [i for i in range(len(dataset))]
+    for i in range(num_users):
+        dict_users[i] = set(np.random.choice(all_idxs, num_items, replace=False))
+        all_idxs = list(set(all_idxs) - dict_users[i])
+    return dict_users
 
 
 if __name__ == '__main__':
@@ -67,6 +81,8 @@ if __name__ == '__main__':
     train_loader = DataLoader(train_dset, args.batch_size, shuffle=True, num_workers=8, pin_memory=True)
     eval_loader = DataLoader(eval_dset, args.batch_size, num_workers=8, pin_memory=True)
 
+    dict_users = iid_sampling(train_dset, 3)
+
     # Net
     net = eval(args.model)(args, train_dset.vocab_size, train_dset.pretrained_emb).cuda()
     print("Total number of parameters : " + str(sum([p.numel() for p in net.parameters()]) / 1e6) + "M")
@@ -77,6 +93,7 @@ if __name__ == '__main__':
         os.makedirs(os.path.join(args.output, args.name))
 
     # Run training
-    eval_accuracies = train(net, train_loader, eval_loader, args)
+    # eval_accuracies = train(net, train_loader, eval_loader, args)
+    eval_accuracies = train(net, train_dset, eval_loader, dict_users, args)
     open('best_scores.txt', 'a+').write(args.output + "/" + args.name + ","
                                         + str(max(eval_accuracies)) + "\n")
